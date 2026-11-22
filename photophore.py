@@ -59,7 +59,7 @@ class Photophore(ABox):
         x, y, h = self.x, self.y, self.h
         t = self.thickness
 
-        # s/S : trous de fixation du fond et pieds complémentaires en haut.
+        # s : pieds inférieurs et trous pour le fond ; S : encoches supérieures complémentaires.
         # h/e : fond emboîté classique, haut droit.
         t1, t2, t3, t4 = ("SSSS" if self.empilable else "eeee")
         b = self.edges["s" if self.empilable else "h"]
