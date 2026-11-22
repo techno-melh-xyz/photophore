@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Générateur de boîte et photophore (Boxes.py dans le navigateur)</title>
+<title>Générateur de photophores</title>
 <script src="https://cdn.jsdelivr.net/pyodide/v314.0.8/full/pyodide.js"></script>
 <style>
   :root {
@@ -23,6 +23,10 @@
   }
   header, main, footer { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
   header { padding-top: 24px; }
+  .entete-photo { display:flex; gap:24px; align-items:center; margin-bottom:22px; }
+  .entete-photo img { width:235px; max-width:38%; height:165px; object-fit:cover; border-radius:10px; }
+  .entete-photo .intro { flex:1; }
+  @media(max-width:560px){ .entete-photo {align-items:flex-start;gap:12px;} .entete-photo img{width:38%;height:auto;aspect-ratio:1;} }
   h1 { margin: 0 0 4px; font-size: 1.6rem; }
   h2 { font-size: 1.05rem; margin: 0 0 10px; }
   .sous-titre { color: var(--discret); margin: 0 0 16px; }
@@ -73,12 +77,13 @@
 </head>
 <body>
 <header>
-  <h1>Générateur de boîte / photophore (ABox)</h1>
-  <p class="sous-titre">
-    Boxes.py s’exécute ici, dans votre navigateur : aucun serveur n’est nécessaire.
-    Le fichier SVG obtenu est prêt pour une découpe laser ou une fraiseuse CNC.
-    Vous pouvez aussi découper vos propres dessins SVG dans les 4 parois pour faire un photophore.
-  </p>
+  <div class="entete-photo">
+    <img src="photophore.jpg" alt="Photophore de Noël avec motifs ajourés et lumière LED">
+    <div class="intro">
+      <h1>Générateur de photophores</h1>
+      <p class="sous-titre">Indiquez les dimensions, l'épaisseur du bois et envoyez vos dessins pour les cotés</p>
+    </div>
+  </div>
 </header>
 
 <main>
@@ -101,38 +106,14 @@
       <div class="deux">
         <label><span class="nom">Épaisseur <small>(mm)</small></span>
           <input type="number" name="thickness" value="3" min="0.1" step="any" required></label>
-        <label><span class="nom">Correction de trait <small>(burn, mm)</small></span>
+        <label><span class="nom"><a href="compensation-laser.html" target="_blank" rel="noopener">Compensation de largeur de matière enlevée par le faisceau laser</a> <small>(mm)</small></span>
           <input type="number" name="burn" value="0.1" min="0" step="any" required></label>
       </div>
 
-      <h2>Boîte</h2>
-      <label><span class="nom">Bord du bas</span>
-        <select name="bottom_edge">
-          <option value="h">h — Trous pour les doigts (fond emboîté)</option>
-          <option value="F">F — Doigts (fond emboîté)</option>
-          <option value="s">s — Empilable</option>
-          <option value="e">e — Bord droit, sans fond</option>
-        </select></label>
-      <div class="deux">
-        <label><span class="nom">Couvercle</span>
-          <select name="Lid_style">
-            <option value="none">Aucun</option>
-            <option value="flat">Plat</option>
-            <option value="chest">Coffre</option>
-            <option value="overthetop">Par-dessus</option>
-            <option value="ontop">Posé dessus</option>
-            <option value="flatbrim">Plat avec rebord</option>
-            <option value="flatfang">Plat avec crocs</option>
-          </select></label>
-        <label><span class="nom">Poignée du couvercle</span>
-          <select name="Lid_handle">
-            <option value="none">Aucune</option>
-            <option value="long_rounded">Longue arrondie</option>
-            <option value="long_trapezoid">Longue trapézoïdale</option>
-            <option value="long_doublerounded">Longue double arrondie</option>
-            <option value="knob">Bouton</option>
-          </select></label>
-      </div>
+      <label class="case" style="font-size:16px; font-weight:700; margin-bottom:12px;">
+        <input type="checkbox" name="ph_empilable">
+        <span>Rendre le photophore empilable</span>
+      </label>
 
       <h2>Dessins des parois (photophore)</h2>
       <p class="aide">
@@ -184,19 +165,7 @@
             </select></label>
           <label><span class="nom">Espacement des pièces <small>(× épaisseur)</small></span>
             <input type="number" name="spacing" value="0.5" min="0" step="any"></label>
-          <label><span class="nom">Languettes de maintien <small>(mm, 0 = aucune)</small></span>
-            <input type="number" name="tabs" value="0" min="0" step="any"></label>
-          <label><span class="nom">Rectangle de référence <small>(mm, 0 = aucun)</small></span>
-            <input type="number" name="reference" value="100" min="0" step="any"></label>
-          <label><span class="nom">Coins intérieurs</span>
-            <select name="inner_corners">
-              <option value="loop">Boucle</option>
-              <option value="corner">Angle</option>
-              <option value="backarc">Arc arrière</option>
-            </select></label>
         </div>
-        <label class="case"><input type="checkbox" name="labels" checked>
-          <span>Étiqueter les pièces</span></label>
       </details>
 
       <div class="actions">
@@ -243,6 +212,7 @@ def generer(args, textes, marge, ignorer_fond):
     b.argparser.error = erreur
     b.parseArgs(list(args))
     b.marge = float(marge)
+    b.empilable = (b.bottom_edge == "s")
     avertissements = []
     for i, texte in enumerate(list(textes)):
         if not texte:
@@ -271,7 +241,7 @@ const svgParois = [null, null, null, null];   // texte SVG chargé pour chaque p
 let pyodide = null;
 let generer = null;
 let urlSvg = null;
-let nomFichier = "boite.svg";
+let nomFichier = "photophore.svg";
 
 function message(texte, erreur = false) {
   statut.textContent = texte;
@@ -312,7 +282,7 @@ async function demarrer() {
 function construireArguments() {
   const donnees = new FormData(formulaire);
   const args = [];
-  const cases = ["outside", "labels"];
+  const cases = ["outside"];
   for (const [nom, valeur] of donnees.entries()) {
     if (cases.includes(nom) || nom.startsWith("ph_")) continue;
     args.push("--" + nom + "=" + valeur);
@@ -320,6 +290,10 @@ function construireArguments() {
   for (const nom of cases) {
     args.push("--" + nom + "=" + (donnees.has(nom) ? "1" : "0"));
   }
+  // Paramètres avancés fixes, retirés de l’interface.
+  args.push("--tabs=0", "--inner_corners=loop", "--labels=1");
+  args.push("--bottom_edge=" + (donnees.has("ph_empilable") ? "s" : "h"));
+  args.push("--reference=0");
   args.push("--format=svg");
   return args;
 }
@@ -361,7 +335,7 @@ function afficher(svg, avecDessins) {
   apercu.replaceChildren(img);
 
   const f = new FormData(formulaire);
-  nomFichier = (avecDessins ? "photophore_" : "boite_") + f.get("x") + "x" + f.get("y") + "x" + f.get("h") + ".svg";
+  nomFichier = "photophore_" + f.get("x") + "x" + f.get("y") + "x" + f.get("h") + ".svg";
 
   const racine = new DOMParser().parseFromString(svg, "image/svg+xml").documentElement;
   const l = racine.getAttribute("width"), h = racine.getAttribute("height");
