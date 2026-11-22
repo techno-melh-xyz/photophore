@@ -19,6 +19,7 @@ class Photophore(ABox):
         # (cadre démarrant en (0, 0), axe y vers le bas comme en SVG)
         self.dessins = [None, None, None, None]
         self.marge = 8.0
+        self.empilable = False
 
     def _dessiner(self, i, largeur, hauteur, retrait_x):
         """Découpe le dessin n° i dans la zone pleine de la paroi (repère local : origine en bas à gauche)."""
@@ -58,8 +59,10 @@ class Photophore(ABox):
         x, y, h = self.x, self.y, self.h
         t = self.thickness
 
-        t1, t2, t3, t4 = "eeee"
-        b = self.edges.get(self.bottom_edge, self.edges["F"])
+        # s/S : trous de fixation du fond et pieds complémentaires en haut.
+        # h/e : fond emboîté classique, haut droit.
+        t1, t2, t3, t4 = ("SSSS" if self.empilable else "eeee")
+        b = self.edges["s" if self.empilable else "h"]
         sideedge = "F"
 
         if self.outside:
@@ -67,7 +70,7 @@ class Photophore(ABox):
             self.y = y = self.adjustSize(y)
             self.h = h = self.adjustSize(h, b, t1)
 
-        hauteur_utile = h - b.startWidth()
+        hauteur_utile = h - b.startWidth() - self.edges[t1].startWidth()
 
         def cb(i, largeur, retrait_x):
             if not self.dessins[i]:
